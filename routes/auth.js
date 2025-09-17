@@ -29,6 +29,18 @@ const router = express.Router();
 
             const payload = { userId:user._id, role:user.role };
             const token = jwt.sign(payload, config.jwtSecret, { expiresIn:config.jwtExpiresIn })
+
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: config.cookieSecure,
+                sameStrict: 'Strict',
+                maxAge: 1000*60*60
+            })
+
+            res.status(201).json({ message: "User created Sucessfully",
+                user:{ id:user._id, name:user.name, email:user.email },
+                token
+            });
             
         } catch (e) {
             console.error(e);
