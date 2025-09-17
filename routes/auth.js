@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 
 
- router.post('/signup', 
+router.post('/signup', 
     body('name').isLength({ min:2 }),
     body('email').isEmail(),
     body('password').isLength({ min: 6 }),
@@ -47,4 +47,43 @@ const router = express.Router();
             res.status(500).json({ messege:"Server error" });
         }
     }
-)
+);
+
+router.post('/login',
+    body('email').isEmail(),
+    body('password').exists(),
+    async (req,res) =>{
+        const errors = validationResult(req);
+        if(!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
+        
+        try {
+            const { email, password } = req.body;
+            const user = User.findOne({ email });
+            if(!user) return res.status(401).json({ message:"you dont have an account" });
+
+            const isMatch = await user.comparePassword(password);
+            if(!isMatch) return res.status(401).json({ message:"your password is incorrect" });
+
+            const payload = {userId:user._id, role:user.role };
+            const token = jwt.sign(payload, config.jwtSecret, {expiresIn:config.jwtExpiresIn});
+
+            res.cookie('token',token, {
+                httpOnly:true,
+                secure:config.cookieSecure,
+                sameStrict:'Strict',
+                maxAge: 1000*60*60
+            });
+
+            res.status(201).json({message:"Successfully logged in",
+                user:{id:user._id, name:user.name, email:user.email},
+                token
+            });
+            
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ message: "Server error" });
+        }    
+    }
+ );
+
+ module.exports = router;
